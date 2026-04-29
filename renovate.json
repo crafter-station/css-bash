@@ -1,0 +1,19 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended", ":semanticCommits"],
+	"schedule": ["after 6am every weekday", "before 10am every weekday"],
+	"timezone": "America/Lima",
+	"packageRules": [
+		{
+			"matchPackageNames": ["web-features"],
+			"automerge": true,
+			"automergeType": "pr",
+			"schedule": ["at any time"],
+			"minimumReleaseAge": "0 days"
+		},
+		{
+			"matchPackageNames": ["just-bash", "@modelcontextprotocol/sdk"],
+			"automerge": false
+		}
+	]
+}
