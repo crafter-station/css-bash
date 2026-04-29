@@ -7,7 +7,6 @@ import {
 	bold,
 	cssCyan,
 	dim,
-	gray,
 	green,
 	sky,
 	yellow,
@@ -26,12 +25,11 @@ interface FeatureLookup {
 	baseline: string;
 	paraphrases: string[];
 	replaces: string[];
+	path?: string;
 }
 
 const lookup = intentsData as Record<string, FeatureLookup>;
 
-// Reload MiniSearch from the serialized index. Must pass the same options the
-// builder used so search behavior matches.
 const search = MiniSearch.loadJSON<Doc>(JSON.stringify(indexData), {
 	fields: ["text", "replaces"],
 	storeFields: ["feature_id", "text", "kind", "replaces"],
@@ -70,7 +68,6 @@ export const intentCmd = defineCommand("intent", async (args) => {
 		};
 	}
 
-	// Aggregate hits per feature: pick best score + best matched paraphrase
 	const perFeature = new Map<
 		string,
 		{
@@ -130,31 +127,39 @@ function renderHit(
 				? sky(baseline)
 				: yellow(baseline);
 
-	const lines = [
-		`  ${amber(bold(feature.name))}  ${dim("·")}  ${dim(featureId)}`,
-		`  ${dim("baseline:")} ${baselineColor}`,
-	];
+	// Header: name · id  (id only when it differs meaningfully from name)
+	const showId = featureId.toLowerCase() !== feature.name.toLowerCase();
+	const header = showId
+		? `  ${amber(bold(feature.name))}  ${dim("·")}  ${dim(featureId)}`
+		: `  ${amber(bold(feature.name))}`;
+
+	const lines = [header, `  ${dim("baseline:")} ${baselineColor}`];
 
 	if (feature.replaces.length > 0) {
+		// cap at 4 to avoid noise
+		const shown = feature.replaces.slice(0, 4);
+		const overflow =
+			feature.replaces.length > 4
+				? dim(` +${feature.replaces.length - 4}`)
+				: "";
 		lines.push(
-			`  ${dim("replaces:")} ${feature.replaces.map((r) => sky(r)).join(dim(", "))}`,
+			`  ${dim("replaces:")} ${shown.map((r) => sky(r)).join(dim(", "))}${overflow}`,
 		);
 	}
 
-	const matchLabel =
-		info.matchedKind === "paraphrase"
-			? "matched intent"
-			: info.matchedKind === "replaces"
-				? `matched replaces`
-				: "matched name";
-	const matchedText =
-		info.matchedKind === "replaces"
-			? `without ${info.matchedReplaces}`
-			: info.matched;
-	lines.push(`  ${dim(matchLabel + ":")} ${gray(matchedText)}`);
+	// Only show "matched" when it adds info beyond the name itself
+	if (info.matchedKind === "paraphrase") {
+		lines.push(`  ${dim("via:")}      ${dim(info.matched)}`);
+	} else if (info.matchedKind === "replaces") {
+		lines.push(
+			`  ${dim("via:")}      ${dim(`replaces ${info.matchedReplaces}`)}`,
+		);
+	}
+	// kind === "name" → no "via" line, the header already says it
 
+	const path = feature.path ?? `/css/_baseline/newly.md`;
 	lines.push(
-		`  ${dim("read:")}      ${cssCyan(`view /css/_year/2024.md`)}  ${dim("or")}  ${cssCyan(`support ${featureId}`)}`,
+		`  ${dim("read:")}     ${cssCyan(`view ${path}`)}  ${dim("·")}  ${cssCyan(`support ${featureId}`)}`,
 	);
 
 	return lines.join("\n");

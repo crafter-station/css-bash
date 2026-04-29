@@ -12,6 +12,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import MiniSearch from "minisearch";
 import { features } from "web-features";
+import { curatedParaphrases } from "./lib/curated-paraphrases.ts";
 import { curatedReplaces, FEATURE_REPLACES } from "./lib/feature-replaces.ts";
 
 const REPO = new URL("..", import.meta.url).pathname;
@@ -64,8 +65,11 @@ async function main() {
 			feature_id: r.id,
 			kind: "name",
 		});
-		// 2. Each paraphrase
-		for (const p of r.paraphrases) {
+		// 2. Each paraphrase (LLM-generated + manually curated)
+		const allParaphrases = [
+			...new Set([...r.paraphrases, ...curatedParaphrases(r.id)]),
+		];
+		for (const p of allParaphrases) {
 			docs.push({
 				id: String(nextId++),
 				text: p,
@@ -99,7 +103,8 @@ async function main() {
 	await writeFile(INDEX_PATH, JSON.stringify(index.toJSON()));
 	console.log(`saved ${INDEX_PATH} (${docs.length} docs indexed)`);
 
-	// Lookup file
+	// Lookup file (now includes the canonical VFS path so the runtime can
+	// suggest "view /css/<group>/<id>.md" for any matched feature)
 	const lookup: Record<
 		string,
 		{
@@ -107,16 +112,19 @@ async function main() {
 			baseline: string;
 			paraphrases: string[];
 			replaces: string[];
+			path: string;
 		}
 	> = {};
 	for (const r of entries) {
 		const feature = features[r.id];
 		if (!feature) continue;
+		const group = feature.group?.[0] ?? "misc";
 		lookup[r.id] = {
 			name: feature.name ?? r.id,
 			baseline: String(feature.status.baseline),
 			paraphrases: r.paraphrases,
 			replaces: curatedReplaces(r.id),
+			path: `/css/${group}/${r.id}.md`,
 		};
 	}
 	await writeFile(INTENTS_PATH, JSON.stringify(lookup));

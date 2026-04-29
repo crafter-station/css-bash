@@ -12,32 +12,56 @@
  */
 export const FEATURE_REPLACES: Record<string, string[]> = {
 	// Positioning
-	"anchor-positioning": ["floating-ui", "popper.js", "popper", "react-popper"],
-	popover: ["floating-ui", "popper.js", "react-popper"],
+	"anchor-positioning": [
+		"floating-ui",
+		"popper.js",
+		"popper",
+		"react-popper",
+		"tippy.js",
+		"@floating-ui/react",
+	],
+	popover: [
+		"floating-ui",
+		"popper.js",
+		"react-popper",
+		"radix-popover",
+		"@radix-ui/react-popover",
+		"headlessui",
+	],
 	"absolute-positioning": ["floating-ui", "popper.js"],
 	"sticky-positioning": ["floating-ui"],
 
 	// View transitions
 	"view-transitions": [
 		"framer-motion",
+		"motion-one",
 		"react-transition-group",
 		"react-spring",
+		"auto-animate",
 	],
 	"cross-document-view-transitions": [
 		"framer-motion",
 		"react-transition-group",
+		"next-view-transitions",
 	],
 	"active-view-transition": ["framer-motion", "react-transition-group"],
 	"view-transition-class": ["framer-motion"],
 
 	// Transitions / interpolation / animations
-	transitions: ["framer-motion", "react-spring", "anime.js"],
+	transitions: ["framer-motion", "motion-one", "react-spring", "anime.js"],
 	"transition-behavior": ["framer-motion", "react-transition-group"],
-	"interpolate-size": ["framer-motion", "react-spring"],
-	"starting-style": ["framer-motion", "react-transition-group"],
-	"animations-css": ["gsap", "anime.js", "framer-motion", "velocity.js"],
+	"interpolate-size": ["framer-motion", "react-spring", "auto-animate"],
+	"starting-style": ["framer-motion", "react-transition-group", "auto-animate"],
+	"animations-css": [
+		"gsap",
+		"anime.js",
+		"framer-motion",
+		"motion-one",
+		"velocity.js",
+		"animate.css",
+	],
 	"animation-composition": ["framer-motion", "gsap"],
-	"display-animation": ["framer-motion"],
+	"display-animation": ["framer-motion", "auto-animate"],
 
 	// Scroll-driven
 	"scroll-driven-animations": [
@@ -45,10 +69,16 @@ export const FEATURE_REPLACES: Record<string, string[]> = {
 		"scrollmagic",
 		"locomotive-scroll",
 		"framer-motion",
+		"motion-one",
 	],
+	"scroll-snap": ["full-page-js", "swiper", "embla-carousel"],
 
 	// Form ergonomics
-	"field-sizing": ["react-textarea-autosize"],
+	"field-sizing": [
+		"react-textarea-autosize",
+		"autosize",
+		"react-autosize-textarea",
+	],
 
 	// Color
 	"color-mix": ["color.js", "polished", "chroma.js", "tinycolor"],
@@ -57,10 +87,25 @@ export const FEATURE_REPLACES: Record<string, string[]> = {
 	"relative-color": ["color.js", "polished"],
 
 	// Layout
-	masonry: ["masonry.js", "react-masonry-css"],
+	masonry: ["masonry.js", "react-masonry-css", "isotope"],
 
 	// Images
 	"image-set": ["picturefill", "lazysizes"],
+
+	// Sibling reactivity / parent selector
+	has: ["alpinejs", "intersection-observer", "headlessui"],
+
+	// Typed CSS variables
+	"registered-custom-properties": ["polished", "css-typed-om"],
+
+	// Scope
+	scope: ["css-modules", "styled-components", "emotion"],
+
+	// Container queries
+	"container-queries": ["react-resize-detector", "use-resize-observer"],
+
+	// Subgrid
+	subgrid: [],
 };
 
 export function curatedReplaces(featureId: string): string[] {
