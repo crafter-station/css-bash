@@ -152,3 +152,60 @@ export const CURATED_PARAPHRASES: Record<string, string[]> = {
 export function curatedParaphrases(featureId: string): string[] {
 	return CURATED_PARAPHRASES[featureId] ?? [];
 }
+
+/**
+ * Paraphrase guard: certain keywords correctly map to ONE specific feature,
+ * but the LLM sprinkled them across many. We block paraphrases containing
+ * these keywords on every feature EXCEPT the canonical owner.
+ *
+ * Pattern: { keyword -> single owning feature_id }. Reading rule: "if a
+ * paraphrase mentions <keyword>, only the owner is allowed to keep it".
+ *
+ * This is a global purifier. Add a row when a benchmark query keeps picking
+ * the wrong feature because the LLM smeared the term around.
+ */
+export const PARAPHRASE_OWNERS: Record<string, string> = {
+	textarea: "field-sizing",
+	"auto-grow": "field-sizing",
+	"auto grow": "field-sizing",
+	"floating-ui": "anchor-positioning",
+	"popper.js": "anchor-positioning",
+	"framer-motion": "view-transitions",
+	masonry: "masonry",
+	"text-wrap: balance": "text-wrap-balance",
+	"text wrap balance": "text-wrap-balance",
+	subgrid: "subgrid",
+	"@scope": "scope",
+	"@property": "registered-custom-properties",
+	":has(": "has",
+};
+
+export function isParaphraseAllowed(
+	featureId: string,
+	paraphrase: string,
+): boolean {
+	const lower = paraphrase.toLowerCase();
+	for (const [keyword, owner] of Object.entries(PARAPHRASE_OWNERS)) {
+		if (lower.includes(keyword.toLowerCase()) && featureId !== owner) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * Assert every key in CURATED_PARAPHRASES references a real web-features ID.
+ * Same role as the version in feature-replaces.ts but for the paraphrase map.
+ */
+export function assertCuratedParaphraseIdsExist(
+	allFeatureIds: ReadonlySet<string>,
+): void {
+	const orphans = Object.keys(CURATED_PARAPHRASES).filter(
+		(id) => !allFeatureIds.has(id),
+	);
+	if (orphans.length > 0) {
+		throw new Error(
+			`scripts/lib/curated-paraphrases.ts has ${orphans.length} curated entries with no matching web-features ID:\n  ${orphans.join("\n  ")}\nFix the IDs or remove the entries.`,
+		);
+	}
+}

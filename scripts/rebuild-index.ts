@@ -12,8 +12,17 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import MiniSearch from "minisearch";
 import { features } from "web-features";
-import { curatedParaphrases } from "./lib/curated-paraphrases.ts";
-import { curatedReplaces, FEATURE_REPLACES } from "./lib/feature-replaces.ts";
+import {
+	assertCuratedParaphraseIdsExist,
+	curatedParaphrases,
+	isParaphraseAllowed,
+} from "./lib/curated-paraphrases.ts";
+import {
+	assertCuratedIdsExist,
+	curatedReplaces,
+	FEATURE_REPLACES,
+} from "./lib/feature-replaces.ts";
+import { loadRecipeSignals } from "./lib/recipe-index.ts";
 
 const REPO = new URL("..", import.meta.url).pathname;
 const DATA_DIR = join(REPO, "data");
@@ -29,6 +38,10 @@ interface RawFeature {
 }
 
 async function main() {
+	const allFeatureIds = new Set(Object.keys(features));
+	assertCuratedIdsExist(allFeatureIds);
+	assertCuratedParaphraseIdsExist(allFeatureIds);
+
 	const raw = JSON.parse(await readFile(RAW_PATH, "utf-8")) as Record<
 		string,
 		RawFeature
@@ -43,32 +56,67 @@ async function main() {
 		`replaces source: scripts/lib/feature-replaces.ts (${curatedCount}/${entries.length} features have curated replaces)`,
 	);
 
+	// Load recipe signals — each recipe gives extra paraphrases/replaces
+	// to its primary feature(s).
+	const recipeSignals = await loadRecipeSignals();
+	const recipesByFeature = new Map<
+		string,
+		Array<(typeof recipeSignals)[number]>
+	>();
+	for (const r of recipeSignals) {
+		for (const featureId of r.featureIds) {
+			const list = recipesByFeature.get(featureId) ?? [];
+			list.push(r);
+			recipesByFeature.set(featureId, list);
+		}
+	}
+
 	// Build documents
 	const docs: Array<{
 		id: string;
 		text: string;
 		replaces: string;
 		feature_id: string;
-		kind: "paraphrase" | "replaces" | "name";
+		kind: "paraphrase" | "replaces" | "name" | "recipe";
 	}> = [];
 	let nextId = 0;
 	for (const r of entries) {
 		const feature = features[r.id];
 		if (!feature) continue;
-		const replaces = curatedReplaces(r.id);
+		const recipes = recipesByFeature.get(r.id) ?? [];
+		const recipeReplaces = recipes.flatMap((rec) => rec.replaces);
+		const replaces = Array.from(
+			new Set([...curatedReplaces(r.id), ...recipeReplaces]),
+		);
 
-		// 1. The feature name itself (high signal)
+		// 1. The feature name + id-as-tokens. The ID often encodes the
+		// canonical search term (e.g. "anchor-positioning" -> "anchor positioning").
+		// Indexing both gives us coverage when the user types either form
+		// and acts as a fallback for features whose `description` is too
+		// short to seed the LLM paraphrases (rare but real).
+		const idTokens = r.id.replace(/[-_]/g, " ");
 		docs.push({
 			id: String(nextId++),
-			text: feature.name ?? r.id,
+			text: `${feature.name ?? r.id} ${idTokens}`,
 			replaces: "",
 			feature_id: r.id,
 			kind: "name",
 		});
-		// 2. Each paraphrase (LLM-generated + manually curated)
+		// Also index the description as a recipe-tier signal — it captures
+		// vocabulary the LLM-generated paraphrases may have missed.
+		if (feature.description && feature.description.length > 0) {
+			docs.push({
+				id: String(nextId++),
+				text: feature.description,
+				replaces: "",
+				feature_id: r.id,
+				kind: "paraphrase",
+			});
+		}
+		// 2. Each paraphrase (LLM-generated + manually curated, minus blocked)
 		const allParaphrases = [
 			...new Set([...r.paraphrases, ...curatedParaphrases(r.id)]),
-		];
+		].filter((p) => isParaphraseAllowed(r.id, p));
 		for (const p of allParaphrases) {
 			docs.push({
 				id: String(nextId++),
@@ -87,6 +135,25 @@ async function main() {
 				feature_id: r.id,
 				kind: "replaces",
 			});
+		}
+		// 4. Recipes — title and tags become extra signals for this feature
+		for (const recipe of recipes) {
+			docs.push({
+				id: String(nextId++),
+				text: recipe.title,
+				replaces: "",
+				feature_id: r.id,
+				kind: "recipe",
+			});
+			for (const tag of recipe.tags) {
+				docs.push({
+					id: String(nextId++),
+					text: tag,
+					replaces: "",
+					feature_id: r.id,
+					kind: "recipe",
+				});
+			}
 		}
 	}
 
@@ -119,11 +186,15 @@ async function main() {
 		const feature = features[r.id];
 		if (!feature) continue;
 		const group = feature.group?.[0] ?? "misc";
+		const recipes = recipesByFeature.get(r.id) ?? [];
+		const recipeReplaces = recipes.flatMap((rec) => rec.replaces);
 		lookup[r.id] = {
 			name: feature.name ?? r.id,
 			baseline: String(feature.status.baseline),
 			paraphrases: r.paraphrases,
-			replaces: curatedReplaces(r.id),
+			replaces: Array.from(
+				new Set([...curatedReplaces(r.id), ...recipeReplaces]),
+			),
 			path: `/css/${group}/${r.id}.md`,
 		};
 	}

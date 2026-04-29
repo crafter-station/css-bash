@@ -68,7 +68,11 @@ function parseArgs(argv: string[]): CliOptions {
 	return opts;
 }
 
-import { curatedReplaces } from "./lib/feature-replaces.ts";
+import { assertCuratedParaphraseIdsExist } from "./lib/curated-paraphrases.ts";
+import {
+	assertCuratedIdsExist,
+	curatedReplaces,
+} from "./lib/feature-replaces.ts";
 
 const PROMPT = (
 	id: string,
@@ -191,6 +195,10 @@ async function main() {
 	const cssEntries = (Object.entries(features) as CssEntry[])
 		.filter(([, f]) => isCssFeature(f))
 		.sort(([a], [b]) => a.localeCompare(b));
+
+	const allCssIds = new Set(cssEntries.map(([id]) => id));
+	assertCuratedIdsExist(allCssIds);
+	assertCuratedParaphraseIdsExist(allCssIds);
 
 	const limited = cssEntries.slice(0, opts.limit);
 	console.log(

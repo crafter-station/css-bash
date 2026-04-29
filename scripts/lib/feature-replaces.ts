@@ -111,3 +111,21 @@ export const FEATURE_REPLACES: Record<string, string[]> = {
 export function curatedReplaces(featureId: string): string[] {
 	return FEATURE_REPLACES[featureId] ?? [];
 }
+
+/**
+ * Assert every key in FEATURE_REPLACES references a real web-features ID.
+ * Throws on first orphan so build/index pipeline fails fast instead of
+ * silently skipping a curated entry.
+ */
+export function assertCuratedIdsExist(
+	allFeatureIds: ReadonlySet<string>,
+): void {
+	const orphans = Object.keys(FEATURE_REPLACES).filter(
+		(id) => !allFeatureIds.has(id),
+	);
+	if (orphans.length > 0) {
+		throw new Error(
+			`scripts/lib/feature-replaces.ts has ${orphans.length} curated entries with no matching web-features ID:\n  ${orphans.join("\n  ")}\nFix the IDs or remove the entries.`,
+		);
+	}
+}
