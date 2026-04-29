@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Build the intent index by generating paraphrases for each CSS feature
  * via OpenAI gpt-4o-mini, then index them with MiniSearch for runtime
@@ -19,11 +20,11 @@
  *   data/intents.json       lookup { intent_id → { feature_id, text } }
  */
 
-import { writeFile, readFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import OpenAI from "openai";
 import MiniSearch from "minisearch";
+import OpenAI from "openai";
 import { features } from "web-features";
 import { isCssFeature } from "../src/vfs/filter.ts";
 import type { CssFeature } from "../src/vfs/types.ts";
@@ -67,7 +68,12 @@ function parseArgs(argv: string[]): CliOptions {
 	return opts;
 }
 
-const PROMPT = (id: string, feature: CssFeature) => `You generate intent paraphrases for a CSS feature so a search engine can match natural-language developer questions to it.
+import { curatedReplaces } from "./lib/feature-replaces.ts";
+
+const PROMPT = (
+	id: string,
+	feature: CssFeature,
+) => `You generate intent paraphrases for a CSS feature so a search engine can match natural-language developer questions to it.
 
 FEATURE
 - id: ${id}
@@ -77,23 +83,31 @@ FEATURE
 - baseline: ${feature.status.baseline}
 
 TASK
-Output a JSON object with two arrays:
-1. "paraphrases": 24 short questions/intents a frustrated dev would type into Stack Overflow, Reddit, Google, or a chat AI. Mix English (16) and Spanish (8). No quotes around items. Cover:
-   - "how to X" / "cómo hacer X" form
-   - "X without Y" / "X sin Y" form (where Y is a JS lib this CSS feature can replace)
-   - the specific UI behavior the user wants ("popover anchored to button", "auto-grow textarea")
-   - synonyms developers actually use ("dropdown", "tooltip", "menu" can all map to anchor positioning)
-2. "replaces": JS libraries / techniques this feature replaces or makes unnecessary, lowercase, e.g. ["floating-ui", "popper.js", "framer-motion", "manual js positioning"]. Empty array if none.
+Output a JSON object with one array:
+1. "paraphrases": 20 short questions/intents a frustrated dev would type into Stack Overflow, Reddit, Google, or a chat AI. Mix English (14) and Spanish (6). No quotes around items.
 
-RULES
-- Be concrete. Every paraphrase must include enough context that someone reading the question alone could imagine the visual result.
+(The "replaces" axis is computed deterministically from a curated allowlist after this call. You only generate paraphrases.)
+
+WHAT GOES IN paraphrases
+- "how to X" / "cómo hacer X" form
+- the specific UI behavior the user wants ("popover anchored to button", "auto-grow textarea")
+- synonyms devs use for the SAME concept this feature implements
+- HTML/CSS terms users would search ("text wrap balance", "anchor positioning", "container query")
+
+⛔ NEVER include "X without Y" paraphrases — the replaces axis is handled separately by the indexer.
+⛔ NEVER mention jquery, bootstrap, framer-motion, floating-ui, popper, gsap, or any other JS library by name in paraphrases — the indexer adds those as separate signals.
+✅ Talk about the visible behavior ("auto-grow textarea", "balanced heading wrap", "popover anchored to button"), the property syntax, and the user goal.
+✅ Use synonyms devs actually type ("dropdown", "tooltip", "menu" for positioning features).
+
+OTHER RULES
+- Be concrete. Every paraphrase must include enough context that someone reading it alone could imagine the visual result.
 - No marketing speak. Match how devs actually talk on SO ("how do i make a textarea grow as i type").
-- Lowercase the paraphrase text unless a proper noun or library name requires capitalization.
+- Lowercase paraphrases unless a proper noun or lib name requires capitalization.
 - No duplicates. No empty strings.
 - Output ONLY the JSON object, no commentary.`;
 
 const FORMAT_HINT = `Output strict JSON with this exact shape:
-{ "paraphrases": ["...", "..."], "replaces": ["..."] }`;
+{ "paraphrases": ["...", "..."] }`;
 
 async function callOpenAI(
 	client: OpenAI,
@@ -117,21 +131,18 @@ async function callOpenAI(
 	const content = resp.choices[0]?.message?.content?.trim();
 	if (!content) throw new Error("empty response");
 
-	const parsed = JSON.parse(content) as {
-		paraphrases?: unknown;
-		replaces?: unknown;
-	};
+	const parsed = JSON.parse(content) as { paraphrases?: unknown };
 	const paraphrases = Array.isArray(parsed.paraphrases)
-		? parsed.paraphrases.filter((s): s is string => typeof s === "string" && s.length > 0).map((s) => s.trim())
-		: [];
-	const replaces = Array.isArray(parsed.replaces)
-		? parsed.replaces.filter((s): s is string => typeof s === "string" && s.length > 0).map((s) => s.trim().toLowerCase())
+		? parsed.paraphrases
+				.filter((s): s is string => typeof s === "string" && s.length > 0)
+				.map((s) => s.trim())
 		: [];
 
 	const dedupedParaphrases = Array.from(new Set(paraphrases));
-	const dedupedReplaces = Array.from(new Set(replaces));
+	// Replaces are NOT trusted from the LLM — pulled from the curated allowlist.
+	const replaces = curatedReplaces(id);
 
-	return { paraphrases: dedupedParaphrases, replaces: dedupedReplaces };
+	return { paraphrases: dedupedParaphrases, replaces };
 }
 
 async function pool<T, R>(
@@ -182,7 +193,9 @@ async function main() {
 		.sort(([a], [b]) => a.localeCompare(b));
 
 	const limited = cssEntries.slice(0, opts.limit);
-	console.log(`processing ${limited.length} CSS features (concurrency=${opts.concurrency})`);
+	console.log(
+		`processing ${limited.length} CSS features (concurrency=${opts.concurrency})`,
+	);
 
 	if (opts.dry) {
 		const [id, feature] = limited[0] as CssEntry;
@@ -195,7 +208,9 @@ async function main() {
 	let existing: Record<string, RawFeature> = {};
 	if (opts.resume && existsSync(RAW_PATH)) {
 		existing = JSON.parse(await readFile(RAW_PATH, "utf-8"));
-		console.log(`resuming: ${Object.keys(existing).length} features already processed`);
+		console.log(
+			`resuming: ${Object.keys(existing).length} features already processed`,
+		);
 	}
 
 	const todo = limited.filter(([id]) => !existing[id]);
@@ -204,33 +219,51 @@ async function main() {
 	const client = new OpenAI({ apiKey: apiKey as string });
 
 	const startTs = Date.now();
-	const newResults = await pool(todo, opts.concurrency, async ([id, feature]) => {
-		try {
-			const out = await callOpenAI(client, id, feature);
-			return { id, ...out } as RawFeature;
-		} catch (err) {
-			const msg = err instanceof Error ? err.message : String(err);
-			return { id, paraphrases: [], replaces: [], error: msg } as RawFeature;
-		}
-	}, (done, total, last) => {
-		if (last && !last.error) {
-			process.stderr.write(`  [${done}/${total}] ${last.id} (${last.paraphrases.length} paraphrases, ${last.replaces.length} replaces)\n`);
-		} else if (last?.error) {
-			process.stderr.write(`  [${done}/${total}] ${last.id} ERROR: ${last.error}\n`);
-		}
-	});
+	const newResults = await pool(
+		todo,
+		opts.concurrency,
+		async ([id, feature]) => {
+			try {
+				const out = await callOpenAI(client, id, feature);
+				return { id, ...out } as RawFeature;
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err);
+				return { id, paraphrases: [], replaces: [], error: msg } as RawFeature;
+			}
+		},
+		(done, total, last) => {
+			if (last && !last.error) {
+				process.stderr.write(
+					`  [${done}/${total}] ${last.id} (${last.paraphrases.length} paraphrases, ${last.replaces.length} replaces)\n`,
+				);
+			} else if (last?.error) {
+				process.stderr.write(
+					`  [${done}/${total}] ${last.id} ERROR: ${last.error}\n`,
+				);
+			}
+		},
+	);
 
 	for (const r of newResults) existing[r.id] = r;
 
 	await writeFile(RAW_PATH, JSON.stringify(existing, null, 2));
 	const elapsedMin = ((Date.now() - startTs) / 60000).toFixed(1);
-	console.log(`\nsaved ${RAW_PATH} (${Object.keys(existing).length} features, ${elapsedMin}min)`);
+	console.log(
+		`\nsaved ${RAW_PATH} (${Object.keys(existing).length} features, ${elapsedMin}min)`,
+	);
 
 	const errors = Object.values(existing).filter((r) => r.error).length;
-	if (errors > 0) console.log(`${errors} features errored — re-run with --resume to retry`);
+	if (errors > 0)
+		console.log(`${errors} features errored — re-run with --resume to retry`);
 
 	// Build the MiniSearch index
-	const docs: Array<{ id: string; text: string; replaces: string; feature_id: string; kind: "paraphrase" | "replaces" | "name" }> = [];
+	const docs: Array<{
+		id: string;
+		text: string;
+		replaces: string;
+		feature_id: string;
+		kind: "paraphrase" | "replaces" | "name";
+	}> = [];
 	let nextId = 0;
 	for (const r of Object.values(existing)) {
 		if (r.error) continue;
@@ -238,10 +271,22 @@ async function main() {
 		if (!feature) continue;
 		// 1. The feature name itself
 		const name = feature.name ?? r.id;
-		docs.push({ id: String(nextId++), text: name, replaces: "", feature_id: r.id, kind: "name" });
+		docs.push({
+			id: String(nextId++),
+			text: name,
+			replaces: "",
+			feature_id: r.id,
+			kind: "name",
+		});
 		// 2. Each paraphrase
 		for (const p of r.paraphrases) {
-			docs.push({ id: String(nextId++), text: p, replaces: r.replaces.join(" "), feature_id: r.id, kind: "paraphrase" });
+			docs.push({
+				id: String(nextId++),
+				text: p,
+				replaces: r.replaces.join(" "),
+				feature_id: r.id,
+				kind: "paraphrase",
+			});
 		}
 		// 3. Replaces axis as its own doc per item
 		for (const lib of r.replaces) {
@@ -269,7 +314,15 @@ async function main() {
 	console.log(`saved ${INDEX_PATH} (${docs.length} docs indexed)`);
 
 	// Lookup file: { feature_id: { name, baseline, paraphrases, replaces } }
-	const lookup: Record<string, { name: string; baseline: string; paraphrases: string[]; replaces: string[] }> = {};
+	const lookup: Record<
+		string,
+		{
+			name: string;
+			baseline: string;
+			paraphrases: string[];
+			replaces: string[];
+		}
+	> = {};
 	for (const r of Object.values(existing)) {
 		if (r.error) continue;
 		const feature = features[r.id];
@@ -282,9 +335,13 @@ async function main() {
 		};
 	}
 	await writeFile(INTENTS_PATH, JSON.stringify(lookup));
-	console.log(`saved ${INTENTS_PATH} (${Object.keys(lookup).length} feature lookups)`);
+	console.log(
+		`saved ${INTENTS_PATH} (${Object.keys(lookup).length} feature lookups)`,
+	);
 
-	console.log(`\ndone. ${Object.keys(existing).length - errors} OK, ${errors} errors.`);
+	console.log(
+		`\ndone. ${Object.keys(existing).length - errors} OK, ${errors} errors.`,
+	);
 }
 
 main().catch((err) => {
