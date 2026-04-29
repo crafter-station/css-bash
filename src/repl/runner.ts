@@ -1,9 +1,10 @@
 import { createInterface } from "node:readline";
 import { Bash } from "just-bash";
+import { allCommands } from "../commands/index.ts";
 import { buildVfs } from "../vfs/builder.ts";
 
 export async function runRepl(): Promise<void> {
-	const bash = new Bash({ files: buildVfs() });
+	const bash = new Bash({ files: buildVfs(), customCommands: allCommands });
 	const rl = createInterface({
 		input: process.stdin,
 		output: process.stdout,
