@@ -1,25 +1,14 @@
 # css-bash
 
-> LLMs are trained on 2022 CSS. css-bash teaches them 2026 CSS — by giving them a bash.
+LLMs are trained on old CSS. css-bash teaches them modern CSS by giving them a bash.
 
-A modern CSS catalog (powered by [`web-features`](https://www.npmjs.com/package/web-features) from the WebDX CG) exposed as a virtual filesystem inside [`just-bash`](https://github.com/vercel-labs/just-bash) and served over MCP. LLMs explore CSS with the shape they already know — `cat`, `grep`, `find`, pipes — instead of having to learn a custom API.
+css-bash exposes the [`web-features`](https://www.npmjs.com/package/web-features) CSS catalog as a virtual filesystem inside [`just-bash`](https://github.com/vercel-labs/just-bash), then serves it over MCP. Agents can discover newer platform features with commands they already know: `ls`, `cat`, `find`, `grep`, `head`, `wc`, and pipes.
 
-## Status
+## Install
 
-🚧 **In construction** — built overnight 2026-04-29 by Hunter + Codex autopilot. V1-V6 slice plans live in [hunter-brain/04_Projects/_shaping/css-bash](https://github.com/Railly/kai/tree/main/04_Projects/_shaping/css-bash).
-
-## What you get
-
-- **VFS** at `/css/{group}/{feature-id}.md` — 429 CSS features from `web-features`, one per file.
-- **Indices** at `/css/_baseline/{newly,widely,limited}.md` and `/css/_year/{2023..2026}.md`.
-- **Custom commands**: `baseline <newly|widely|limited|all>`, `support <feature-id>`, `whatsnew [year]`, `recipe <pattern>`.
-- **Recipes** at `/css/_recipes/*.md` — 10 hand-curated patterns that replace JS workarounds with modern CSS-native primitives.
-- **MCP server** with two tools: `css_shell(command)` and `css_describe()`.
-
-## Install (after V4 ships)
+Add css-bash to your MCP client config:
 
 ```jsonc
-// .mcp.json (or ~/.config/claude/mcp.json)
 {
   "mcpServers": {
     "css-bash": {
@@ -30,15 +19,80 @@ A modern CSS catalog (powered by [`web-features`](https://www.npmjs.com/package/
 }
 ```
 
-REPL for humans:
+The default command starts the MCP stdio server:
+
+```bash
+bunx -y css-bash
+```
+
+## REPL Demo
+
+Use the REPL when you want to explore the catalog directly:
+
 ```bash
 bunx -y css-bash --repl
 ```
 
-## Why bash?
+Example session:
 
-LLMs already know how to use `cat`, `grep`, `find`, and pipes — better than they'd know any custom API. just-bash gives them a sandboxed bash with a virtual filesystem; web-features gives us authoritative baseline data; MCP makes it work anywhere. The whole thing is < 1000 LOC of Hunter code on top of two solid primitives.
+```text
+css-bash> whatsnew 2025
+abs-sign - abs() and sign() (2025-06-26)
+...
+css-bash> support has
+Feature: :has()
+Baseline: widely available
+...
+css-bash> ls /css/view-transitions
+...
+css-bash> exit
+```
+
+## Commands
+
+| Command | Use |
+| --- | --- |
+| `baseline newly` | List Baseline newly available CSS features. |
+| `baseline widely` | List Baseline widely available CSS features. |
+| `baseline limited` | List limited availability CSS features. |
+| `baseline all` | List every CSS feature in the catalog. |
+| `support <feature-id>` | Show the browser support matrix for a feature. |
+| `whatsnew [year]` | List features that became Baseline newly available in a year. |
+| `recipe <pattern>` | Find curated CSS implementation recipes. |
+
+## VFS Layout
+
+```text
+/css
+  /{group}
+    /{feature-id}.md
+  /_baseline
+    /newly.md
+    /widely.md
+    /limited.md
+  /_year
+    /2023.md
+    /2024.md
+    /2025.md
+    /2026.md
+  /_recipes
+    /{recipe}.md
+```
+
+Feature files include the human-readable name, description, Baseline status, Baseline dates, browser support, spec links, caniuse links when available, and MDN browser-compat keys.
+
+## Why Bash
+
+Agents already know how to inspect filesystems and compose shell commands. A VFS keeps the catalog local and offline, while bash makes discovery flexible: `find /css -name '*anchor*'`, `grep -R "Baseline: newly" /css`, or `cat /css/selectors/has.md`.
+
+## Why web-features
+
+`web-features` is maintained by the WebDX Community Group and ships structured data for Baseline status, browser support, specs, groups, and feature descriptions. css-bash uses that package at runtime, so the catalog updates when the dependency updates.
+
+## For Agents
+
+See [AGENTS.md](./AGENTS.md) for repository instructions, stack constraints, and the recommended css-bash query workflow for AI coding tools.
 
 ## License
 
-MIT © Railly Hugo / Crafter Station
+MIT. See [LICENSE](./LICENSE).

@@ -1,0 +1,12 @@
+*.tgz
+.DS_Store
+.env
+.env.*
+.git
+.github
+.obsidian
+docs
+node_modules
+scratch
+tmp
+*.test.ts
