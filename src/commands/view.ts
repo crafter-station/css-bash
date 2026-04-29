@@ -36,23 +36,26 @@ export const viewCmd = defineCommand("view", async (args, ctx) => {
 });
 
 function render(md: string): string {
-	const lines = md.split("\n").map(renderLine);
-	return `${lines.join("\n")}${md.endsWith("\n") ? "" : "\n"}`;
+	// Collapse 2+ consecutive blank lines into a single blank line so the
+	// VFS markdown (which surrounds every section with blanks) reads tight.
+	const collapsed = md.replace(/\n{3,}/g, "\n\n");
+	const lines = collapsed.split("\n").map(renderLine);
+	return `${lines.join("\n")}${collapsed.endsWith("\n") ? "" : "\n"}`;
 }
 
 function renderLine(line: string): string {
 	// Code fences: keep raw line, gray it out so blocks read as separators
 	if (line.startsWith("```")) return gray(line);
 
-	// H1: cssPurple bold
+	// H1: cssPurple bold + underline rule
 	if (line.startsWith("# "))
-		return `\n${cssPurple(bold(line.slice(2)))}\n${cssPurple(dim("─".repeat(Math.max(8, line.length - 2))))}`;
+		return `${cssPurple(bold(line.slice(2)))}\n${cssPurple(dim("─".repeat(Math.max(8, line.length - 2))))}`;
 
-	// H2: cssCyan bold
-	if (line.startsWith("## ")) return `\n${cssCyan(bold(line.slice(3)))}`;
+	// H2: cssCyan bold (no leading blank — markdown already has one above)
+	if (line.startsWith("## ")) return cssCyan(bold(line.slice(3)));
 
 	// H3: bold
-	if (line.startsWith("### ")) return `\n${bold(line.slice(4))}`;
+	if (line.startsWith("### ")) return bold(line.slice(4));
 
 	// Baseline status line: "- Status: widely | newly | limited"
 	const statusMatch = line.match(/^(- Status:\s*)(\w+)$/);
