@@ -35,11 +35,15 @@ export const hex =
 		return `\x1b[38;2;${rgb[0]};${rgb[1]};${rgb[2]}m${s}\x1b[0m`;
 	};
 
-// css-bash brand colors — CSS3 spec purple → cyan, evokes "modern web".
-export const cssPurple = hex("#663399"); // rebeccapurple, the legendary CSS color
-export const cssCyan = hex("#00D9FF");
-export const cssPink = hex("#FF6EC7");
-export const cssYellow = hex("#FFE66D");
+// css-bash brand colors — amber + sky, GitHub Primer / Stripe palette.
+// Renamed to amber/sky but kept old names (cssPurple/cssCyan) as aliases
+// to avoid breaking imports. Old aliases now point to the new colors.
+export const amber = hex("#F59E0B");
+export const sky = hex("#0EA5E9");
+export const cssPurple = amber; // alias: highlight (was rebeccapurple)
+export const cssCyan = sky; // alias: secondary (was cyan)
+export const cssPink = hex("#FF6EC7"); // unused but kept
+export const cssYellow = hex("#FFE66D"); // unused but kept
 
 function parseHex(hexCode: string): [number, number, number] | null {
 	const m = /^#?([0-9a-fA-F]{6})$/.exec(hexCode);
