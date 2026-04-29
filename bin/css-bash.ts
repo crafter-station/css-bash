@@ -1,4 +1,21 @@
 #!/usr/bin/env bun
-// Entrypoint stub — wired by V1 (REPL) and V3 (MCP server) and V4 (final dispatch)
-console.error("css-bash: not yet implemented (waiting for V1)");
-process.exit(2);
+import { runRepl } from "../src/repl/runner.ts";
+
+const args = process.argv.slice(2);
+
+if (args.length === 1 && args[0] === "--repl") {
+	await runRepl();
+} else {
+	process.stdout.write(
+		[
+			"css-bash",
+			"",
+			"Usage:",
+			"  css-bash --repl",
+			"",
+			"MCP server dispatch lands in V3/V4.",
+			"",
+		].join("\n"),
+	);
+	process.exit(2);
+}
