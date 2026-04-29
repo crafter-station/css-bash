@@ -24,6 +24,7 @@ You can explore CSS features baseline newly/widely/limited using bash.
 - support <feature-id>
 - whatsnew [year]
 - recipe <pattern>
+- view <path>  (markdown viewer; cat is plain, view is formatted)
 
 ## Native bash
 ls, cat, head, tail, grep, find, wc, echo, pipes (|), redirection (>), env vars

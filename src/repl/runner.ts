@@ -73,6 +73,7 @@ function replHelp(): string {
 		`    ${bold("support")} ${dim("<feature-id>")}`,
 		`    ${bold("whatsnew")} ${dim("[year]")}`,
 		`    ${bold("recipe")} ${dim("<pattern>")}`,
+		`    ${bold("view")} ${dim("<path>")}`,
 		"",
 		`  ${cssPurple(bold("Bash"))}`,
 		`    ${dim("ls, cat, head, tail, find, grep, wc, echo, pipes (|)")}`,

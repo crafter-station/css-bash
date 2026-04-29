@@ -20,6 +20,7 @@ const CUSTOM_COMMANDS: Group = {
 		["support <feature-id>", "show browser support matrix for a feature"],
 		["whatsnew [year]", "features that became Baseline newly in a year"],
 		["recipe <pattern>", "find curated CSS implementation recipes"],
+		["view <path>", "render a VFS markdown file with discreet colors"],
 	],
 };
 
@@ -55,7 +56,8 @@ const EXAMPLES: Group = {
 			"5 most recent newly-Baseline features",
 		],
 		["css-bash support has", "browser support for :has()"],
-		["css-bash 'cat /css/selectors/has.md'", "read the :has() spec"],
+		["css-bash view /css/selectors/has.md", "render the :has() spec colorized"],
+		["css-bash 'cat /css/selectors/has.md'", "raw markdown (good for piping)"],
 		["css-bash recipe popover", "find curated popover patterns"],
 	],
 };
