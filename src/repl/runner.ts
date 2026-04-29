@@ -69,6 +69,7 @@ export async function runRepl(): Promise<void> {
 function replHelp(): string {
 	return [
 		`  ${cssPurple(bold("Custom commands"))}`,
+		`    ${bold("intent")} ${dim('"<what you want to build>"')}`,
 		`    ${bold("baseline")} ${dim("<newly|widely|limited|all>")}`,
 		`    ${bold("support")} ${dim("<feature-id>")}`,
 		`    ${bold("whatsnew")} ${dim("[year]")}`,

@@ -12,6 +12,7 @@ You can explore CSS features baseline newly/widely/limited using bash.
 - /css/_recipes/*.md - curated patterns when recipes are installed
 
 ## Custom commands
+- intent "<natural language query>"  (find features by what you want to build)
 - baseline <newly|widely|limited|all>
 - support <feature-id>
 - whatsnew [year]

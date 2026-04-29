@@ -16,6 +16,7 @@ const MODES: Group = {
 const CUSTOM_COMMANDS: Group = {
 	title: "Custom commands",
 	items: [
+		['intent "<natural language>"', "find features by what you want to build"],
 		["baseline <newly|widely|limited|all>", "list features by Baseline status"],
 		["support <feature-id>", "show browser support matrix for a feature"],
 		["whatsnew [year]", "features that became Baseline newly in a year"],
@@ -50,6 +51,10 @@ const VFS_LAYOUT: Group = {
 const EXAMPLES: Group = {
 	title: "Examples",
 	items: [
+		[
+			'css-bash intent "popover sin floating ui"',
+			"finds anchor-positioning + popover",
+		],
 		["css-bash whatsnew 2025", "what landed in CSS this year"],
 		[
 			"css-bash 'baseline newly | head -5'",
