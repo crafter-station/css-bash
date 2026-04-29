@@ -1,4 +1,5 @@
 import { features } from "web-features";
+import { readRecipes } from "../recipes/loader.ts";
 import { isCssFeature } from "./filter.ts";
 import { featureToMarkdown, translateBaseline } from "./markdown.ts";
 import type { CssFeature } from "./types.ts";
@@ -28,6 +29,12 @@ export function buildVfs(): Record<string, string> {
 	for (const year of years) {
 		out[`/css/_year/${year}.md`] = buildYearIndex(year, cssEntries);
 	}
+
+	const recipes = readRecipes();
+	for (const [slug, content] of Object.entries(recipes)) {
+		out[`/css/_recipes/${slug}.md`] = content;
+	}
+	out["/css/_recipes/README.md"] = buildRecipesIndex(recipes);
 
 	out["/css/README.md"] = buildReadme(cssEntries);
 
@@ -70,6 +77,9 @@ function buildReadme(entries: CssEntry[]): string {
 		"## Year indexes",
 		...years.map((year) => `- /css/_year/${year}.md`),
 		"",
+		"## Recipes",
+		"- /css/_recipes/README.md",
+		"",
 		"## Groups",
 		...groups,
 		"",
@@ -105,6 +115,15 @@ function buildIndex(title: string, entries: CssEntry[]): string {
 	});
 
 	return [`# ${title}`, "", ...lines, ""].join("\n");
+}
+
+function buildRecipesIndex(recipes: Record<string, string>): string {
+	const lines = Object.entries(recipes).map(([slug, content]) => {
+		const title = content.match(/^# (.+)$/m)?.[1] ?? slug;
+		return `- [${title}](/css/_recipes/${slug}.md)`;
+	});
+
+	return ["# CSS recipes", "", ...lines, ""].join("\n");
 }
 
 function compareByBaselineLowDateDesc(

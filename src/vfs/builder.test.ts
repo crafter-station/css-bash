@@ -2,6 +2,18 @@ import { expect, test } from "bun:test";
 import { Bash } from "just-bash";
 import { buildVfs } from "./builder.ts";
 
+const expectedRecipeSections = [
+	"**Replaces:**",
+	"**Baseline:**",
+	"**Falls back:**",
+	"## HTML",
+	"## CSS",
+	"## Why",
+	"## Caveats",
+	"## Spec",
+	"## Tags",
+];
+
 test("buildVfs contains the :has() feature in selectors", () => {
 	const vfs = buildVfs();
 	const hasDoc = vfs["/css/selectors/has.md"];
@@ -50,4 +62,32 @@ test("find returns scroll feature paths", async () => {
 			.filter(Boolean)
 			.every((path) => path.includes("scroll")),
 	).toBe(true);
+});
+
+test("buildVfs injects the anchor popover recipe with required sections", () => {
+	const vfs = buildVfs();
+	const recipe = vfs["/css/_recipes/anchor-popover.md"];
+
+	if (recipe === undefined) {
+		throw new Error("Expected /css/_recipes/anchor-popover.md in VFS");
+	}
+
+	expect(
+		Object.fromEntries(
+			expectedRecipeSections.map((section) => [
+				section,
+				recipe.includes(section),
+			]),
+		),
+	).toEqual({
+		"**Replaces:**": true,
+		"**Baseline:**": true,
+		"**Falls back:**": true,
+		"## HTML": true,
+		"## CSS": true,
+		"## Why": true,
+		"## Caveats": true,
+		"## Spec": true,
+		"## Tags": true,
+	});
 });
