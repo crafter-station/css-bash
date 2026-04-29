@@ -10,11 +10,11 @@ test("whatsnew 2024 renders exact first five features through head", async () =>
 	expect(result.stderr).toBe("");
 	expect(
 		result.stdout,
-	).toBe(`align-content-block — align-content in block layouts (2024-04-16)
-alt-text-generated-content — Alt text for generated content (2024-07-09)
-backdrop-filter — backdrop-filter (2024-09-16)
-font-size-adjust — font-size-adjust (2024-07-25)
-gradient-interpolation — Gradient interpolation (2024-06-11)
+	).toBe(`  align-content-block                align-content in block layouts  2024-04-16
+  alt-text-generated-content         Alt text for generated content  2024-07-09
+  backdrop-filter                    backdrop-filter  2024-09-16
+  font-size-adjust                   font-size-adjust  2024-07-25
+  gradient-interpolation             Gradient interpolation  2024-06-11
 `);
 });
 

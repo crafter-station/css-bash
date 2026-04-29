@@ -1,4 +1,5 @@
 import { defineCommand } from "just-bash";
+import { bold, cssCyan, dim } from "../lib/output.ts";
 import { readRecipes } from "../recipes/loader.ts";
 
 const recipes = readRecipes();
@@ -15,12 +16,13 @@ export const recipeCmd = defineCommand("recipe", async (args) => {
 		.filter(([slug, content]) => recipeMatches(slug, content, lower))
 		.map(([slug, content]) => {
 			const title = extractTitle(content) ?? slug;
-			return `/css/_recipes/${slug}.md\n  ${title}`;
+			const path = `/css/_recipes/${slug}.md`;
+			return `  ${cssCyan(path)}\n    ${bold(title)}`;
 		});
 
 	if (matches.length === 0) {
 		return {
-			stdout: `(no recipes matching "${pattern}")\n`,
+			stdout: `${dim(`(no recipes matching "${pattern}")`)}\n`,
 			stderr: "",
 			exitCode: 0,
 		};

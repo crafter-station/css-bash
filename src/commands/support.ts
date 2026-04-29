@@ -1,5 +1,14 @@
 import { defineCommand } from "just-bash";
 import { features } from "web-features";
+import {
+	bold,
+	cssCyan,
+	cssPurple,
+	dim,
+	gray,
+	green,
+	yellow,
+} from "../lib/output.ts";
 import { isCssFeature } from "../vfs/filter.ts";
 import { translateBaseline } from "../vfs/markdown.ts";
 import type { CssFeature } from "../vfs/types.ts";
@@ -37,15 +46,27 @@ export const supportCmd = defineCommand("support", async (args) => {
 function formatSupport(id: string, feature: CssFeature): string {
 	const baseline = translateBaseline(feature.status.baseline);
 	const support = feature.status.support ?? {};
-	const supportLines = browserOrder.map(
-		(browser) => `${browser.padEnd(20)} ${support[browser] ?? "no"}`,
-	);
+	const date = feature.status.baseline_low_date;
 
-	return [
-		feature.name || id,
-		`baseline: ${feature.status.baseline} (${baseline})`,
+	const statusColored =
+		baseline === "widely"
+			? green(baseline)
+			: baseline === "newly"
+				? cssCyan(baseline)
+				: yellow(baseline);
+
+	const supportLines = browserOrder.map((browser) => {
+		const version = support[browser];
+		const versionStr = version ?? "—";
+		const color = version ? bold : gray;
+		return `    ${dim(browser.padEnd(18))}  ${color(versionStr)}`;
+	});
+
+	const header = [
+		`  ${cssPurple(bold(feature.name || id))}`,
+		`  ${dim("baseline:")} ${statusColored}${date ? `  ${dim(`(since ${date})`)}` : ""}`,
 		"",
-		...supportLines,
-		"",
-	].join("\n");
+	];
+
+	return `${[...header, ...supportLines, ""].join("\n")}`;
 }

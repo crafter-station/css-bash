@@ -9,7 +9,7 @@ test("recipe popover finds the anchor popover recipe", async () => {
 	expect(result.exitCode).toBe(0);
 	expect(result.stderr).toBe("");
 	expect(result.stdout).toBe(
-		"/css/_recipes/anchor-popover.md\n  Anchor-positioned popover (no Floating UI)\n",
+		"  /css/_recipes/anchor-popover.md\n    Anchor-positioned popover (no Floating UI)\n",
 	);
 });
 
@@ -20,7 +20,7 @@ test("recipe theming finds the light-dark recipe", async () => {
 	expect(result.exitCode).toBe(0);
 	expect(result.stderr).toBe("");
 	expect(result.stdout).toBe(
-		"/css/_recipes/light-dark-theming.md\n  System-aware theming with light-dark()\n",
+		"  /css/_recipes/light-dark-theming.md\n    System-aware theming with light-dark()\n",
 	);
 });
 

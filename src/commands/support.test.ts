@@ -8,35 +8,35 @@ test("support has renders the full support matrix", async () => {
 
 	expect(result.exitCode).toBe(0);
 	expect(result.stderr).toBe("");
-	expect(result.stdout).toBe(`:has()
-baseline: low (newly)
+	expect(result.stdout).toBe(`  :has()
+  baseline: newly  (since 2023-12-19)
 
-chrome               105
-chrome_android       105
-edge                 105
-firefox              121
-firefox_android      121
-safari               15.4
-safari_ios           15.4
+    chrome              105
+    chrome_android      105
+    edge                105
+    firefox             121
+    firefox_android     121
+    safari              15.4
+    safari_ios          15.4
 `);
 });
 
-test("support field-sizing renders missing Firefox support as no", async () => {
+test("support field-sizing renders missing Firefox support as em-dash", async () => {
 	const bash = new Bash({ customCommands: allCommands });
 	const result = await bash.exec("support field-sizing");
 
 	expect(result.exitCode).toBe(0);
 	expect(result.stderr).toBe("");
-	expect(result.stdout).toBe(`field-sizing
-baseline: false (limited)
+	expect(result.stdout).toBe(`  field-sizing
+  baseline: limited
 
-chrome               123
-chrome_android       123
-edge                 123
-firefox              no
-firefox_android      no
-safari               26.2
-safari_ios           26.2
+    chrome              123
+    chrome_android      123
+    edge                123
+    firefox             —
+    firefox_android     —
+    safari              26.2
+    safari_ios          26.2
 `);
 });
 

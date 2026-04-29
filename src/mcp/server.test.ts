@@ -92,7 +92,7 @@ test("MCP server lists tools and runs css_shell commands", async () => {
 			{
 				type: "text",
 				text: `STDOUT:
-abs-sign — abs() and sign() (2025-06-26)
+  abs-sign                           abs() and sign()  2025-06-26
 
 STDERR:
 

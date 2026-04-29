@@ -1,5 +1,6 @@
 import { defineCommand } from "just-bash";
 import { features } from "web-features";
+import { bold, cssCyan, dim } from "../lib/output.ts";
 import { isCssFeature } from "../vfs/filter.ts";
 import type { CssFeature } from "../vfs/types.ts";
 
@@ -8,6 +9,8 @@ type CssEntry = [string, CssFeature];
 const cssEntries = Object.entries(features)
 	.filter((entry): entry is CssEntry => isCssFeature(entry[1]))
 	.sort(([left], [right]) => left.localeCompare(right));
+
+const idPad = cssEntries.reduce((max, [id]) => Math.max(max, id.length), 0);
 
 export const whatsnewCmd = defineCommand("whatsnew", async (args) => {
 	const currentYear = new Date().getUTCFullYear();
@@ -26,12 +29,11 @@ export const whatsnewCmd = defineCommand("whatsnew", async (args) => {
 
 	const matches = cssEntries
 		.filter(([, feature]) => feature.status.baseline_low_date?.startsWith(year))
-		.map(formatFeatureLine)
-		.sort();
+		.map(formatFeatureLine);
 
 	if (matches.length === 0) {
 		return {
-			stdout: `(no features became baseline newly in ${year})\n`,
+			stdout: `${dim(`(no features became baseline newly in ${year})`)}\n`,
 			stderr: "",
 			exitCode: 0,
 		};
@@ -49,5 +51,7 @@ function usage(currentYear: number) {
 }
 
 function formatFeatureLine([id, feature]: CssEntry): string {
-	return `${id} — ${feature.name || id} (${feature.status.baseline_low_date})`;
+	const name = feature.name || id;
+	const date = feature.status.baseline_low_date ?? "";
+	return `  ${bold(id.padEnd(idPad))}  ${dim(name)}  ${cssCyan(date)}`;
 }
